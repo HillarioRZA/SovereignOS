@@ -1,0 +1,7 @@
+[package]
+name = "sovereign-node-host"
+version = "0.1.0"
+edition = "2021"
+description = "Daemon eksekusi terdistribusi (Protokol OCSC HMAC-SHA-256)"
+
+[dependencies]

@@ -1,0 +1,7 @@
+[package]
+name = "sovereign-sandbox-guard"
+version = "0.1.0"
+edition = "2021"
+description = "Hardline mount blocker, symlink canonicalizer, cgroups guard"
+
+[dependencies]

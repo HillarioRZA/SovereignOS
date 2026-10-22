@@ -1,0 +1,2 @@
+conda activate startup-agent
+uvicorn backend.main:app --reload 

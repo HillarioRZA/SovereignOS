@@ -1,0 +1,8 @@
+[workspace]
+members = [
+    "sovereign-node-host",
+    "sovereign-sandbox-guard",
+    "sovereign-code-indexer",
+    "sovereign-wasi-runner",
+]
+resolver = "2"

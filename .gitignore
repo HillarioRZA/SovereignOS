@@ -1,0 +1,51 @@
+# ==============================================================================
+# SovereignOS - Git Ignore Configuration
+# ==============================================================================
+
+# Environment Variables & Secrets
+.env
+.env.*
+!.env.example
+
+# IDE & Local Agent Tools
+.agents/
+.codegraph/
+.mcp.json
+
+# Root Documentation (Except README.md)
+/*.md
+!/README.md
+
+# Python Artifacts & Caches
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+env/
+
+# Databases & Local Data Files
+data/*.db
+data/*.db-wal
+data/*.db-shm
+*.db
+*.sqlite3
+
+# Node.js / Frontend
+node_modules/
+.next/
+out/
+.turbo/
+
+# Rust Target & Builds
+target/
+crates/*/target/
+
+# Local Logs & OS Dumps
+*.log
+.DS_Store
+Thumbs.db

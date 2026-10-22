@@ -1,0 +1,7 @@
+[package]
+name = "sovereign-code-indexer"
+version = "0.1.0"
+edition = "2021"
+description = "Pencarian kode Ripgrep & pemindai AST Tree-Sitter via PyO3"
+
+[dependencies]
