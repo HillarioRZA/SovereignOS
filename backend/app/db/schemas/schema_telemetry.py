@@ -55,6 +55,20 @@ CREATE TABLE IF NOT EXISTS sentinel_audit_logs (
 );
 """
 
+DDL_VENTURE_FINANCIAL_LEDGER = """
+CREATE TABLE IF NOT EXISTS venture_financial_ledger (
+    id TEXT PRIMARY KEY,
+    project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    entry_type TEXT NOT NULL,
+    amount_usd REAL NOT NULL,
+    is_recurring INTEGER NOT NULL DEFAULT 0,
+    period_month TEXT NOT NULL,
+    notes TEXT,
+    recorded_by_role_id TEXT NOT NULL REFERENCES corporate_roles(id),
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+"""
+
 INDEX_MESSAGES_STREAM = """
 CREATE INDEX IF NOT EXISTS idx_msgs_proj_stream ON corporate_messages(project_id, stream_category);
 """
@@ -63,11 +77,17 @@ INDEX_MESSAGES_SCOPED = """
 CREATE INDEX IF NOT EXISTS idx_msgs_scoped ON corporate_messages(scoped_recipient_role_id);
 """
 
+INDEX_VENTURE_FINANCIAL_LEDGER = """
+CREATE INDEX IF NOT EXISTS idx_vfl_proj_period ON venture_financial_ledger(project_id, period_month);
+"""
+
 TELEMETRY_DDL_LIST = [
     DDL_CORPORATE_MESSAGES,
     DDL_MESSAGES_FTS,
     DDL_CORPORATE_TOKEN_LEDGER,
     DDL_SENTINEL_AUDIT_LOGS,
+    DDL_VENTURE_FINANCIAL_LEDGER,
     INDEX_MESSAGES_STREAM,
     INDEX_MESSAGES_SCOPED,
+    INDEX_VENTURE_FINANCIAL_LEDGER,
 ]
