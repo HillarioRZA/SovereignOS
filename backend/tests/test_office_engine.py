@@ -3,14 +3,34 @@ Unit Tests for Office Engine: office_relay, office_dispatch, & war_room_moderato
 Mematuhi Foreign Key Constraints (PRAGMA foreign_keys = ON) dan Invarian Suci 1 & 9.
 """
 
+import os
+import tempfile
 import pytest
 from app.db.session import get_db_connection
+from app.db.schemas import execute_ddl_migrations
 from app.db.repos.ticket_repo import get_ticket
 from app.engine.turn.turn_preflight import execute_turn_preflight, is_ticket_interrupted
 from app.engine.orchestrator.file_lock_manager import file_lock_manager
 from app.engine.office.office_relay import office_relay
 from app.engine.office.office_dispatch import office_dispatch
 from app.engine.office.war_room_moderator import war_room_moderator
+
+
+@pytest.fixture
+async def temp_db():
+    fd, path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    async with get_db_connection(path) as conn:
+        await execute_ddl_migrations(conn)
+        await conn.commit()
+    yield path
+    for ext in ["", "-wal", "-shm"]:
+        p = path + ext
+        if os.path.exists(p):
+            try:
+                os.remove(p)
+            except OSError:
+                pass
 
 
 async def _seed_parent_entities(conn, project_id: str, division_id: str, role_id: str, handle: str):
@@ -39,9 +59,9 @@ async def _seed_parent_entities(conn, project_id: str, division_id: str, role_id
 
 
 @pytest.mark.asyncio
-async def test_1_click_hold_ticket_preemption_and_lock_release():
+async def test_1_click_hold_ticket_preemption_and_lock_release(temp_db):
     """Memastikan hold_ticket_action() mengubah status, memicu interrupt ke preflight, dan melepas lock."""
-    async with get_db_connection() as conn:
+    async with get_db_connection(temp_db) as conn:
         proj_id = "proj_office_test"
         div_id = "div_office_fe"
         role_id = "role_office_fe"
@@ -90,9 +110,9 @@ async def test_1_click_hold_ticket_preemption_and_lock_release():
 
 
 @pytest.mark.asyncio
-async def test_screenshare_telemetry_emission():
+async def test_screenshare_telemetry_emission(temp_db):
     """Memastikan office_relay memancarkan telemetri screen-share dan menyimpan data ke DB."""
-    async with get_db_connection() as conn:
+    async with get_db_connection(temp_db) as conn:
         proj_id = "proj_telemetry_test"
         div_id = "div_tel"
         role_id = "role_tel_fe"
@@ -129,9 +149,9 @@ async def test_screenshare_telemetry_emission():
 
 
 @pytest.mark.asyncio
-async def test_war_room_moderation_deterministic_flow():
+async def test_war_room_moderation_deterministic_flow(temp_db):
     """Memastikan All-Hands War Room berjalan deterministik dengan moderasi CoS & CTO."""
-    async with get_db_connection() as conn:
+    async with get_db_connection(temp_db) as conn:
         proj_id = "proj_warroom_test"
         await conn.execute(
             "INSERT OR IGNORE INTO projects (id, name, founder_vision, product_archetype) VALUES (?, ?, ?, ?)",

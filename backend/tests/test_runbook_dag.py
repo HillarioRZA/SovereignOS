@@ -4,8 +4,11 @@ Mematuhi Foreign Key Constraints dan Invarian Suci 6 (DB-Driven DAG).
 """
 
 import json
+import os
+import tempfile
 import pytest
 from app.db.session import get_db_connection
+from app.db.schemas import execute_ddl_migrations
 from app.db.repos.project_repo import (
     create_project,
     get_project,
@@ -13,6 +16,23 @@ from app.db.repos.project_repo import (
     get_runbook,
 )
 from app.engine.orchestrator.runbook_dag import RunbookDAGEngine
+
+
+@pytest.fixture
+async def temp_db():
+    fd, path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    async with get_db_connection(path) as conn:
+        await execute_ddl_migrations(conn)
+        await conn.commit()
+    yield path
+    for ext in ["", "-wal", "-shm"]:
+        p = path + ext
+        if os.path.exists(p):
+            try:
+                os.remove(p)
+            except OSError:
+                pass
 
 
 async def _seed_roles_for_dag(conn):
@@ -40,9 +60,9 @@ async def _seed_roles_for_dag(conn):
 
 
 @pytest.mark.asyncio
-async def test_project_repo_crud():
+async def test_project_repo_crud(temp_db):
     """Memastikan operasi CRUD repositori proyek dan runbook bekerja dengan benar."""
-    async with get_db_connection() as conn:
+    async with get_db_connection(temp_db) as conn:
         p = await create_project(
             conn=conn,
             id="proj_repo_test_01",
@@ -77,9 +97,9 @@ async def test_project_repo_crud():
 
 
 @pytest.mark.asyncio
-async def test_runbook_dag_compilation_and_dependencies():
+async def test_runbook_dag_compilation_and_dependencies(temp_db):
     """Memastikan kompilasi DAG menghasilkan tiket dengan status awal READY untuk akar DAG dan BACKLOG untuk downstream."""
-    async with get_db_connection() as conn:
+    async with get_db_connection(temp_db) as conn:
         await _seed_roles_for_dag(conn)
 
         proj_id = "proj_dag_compile_test"
