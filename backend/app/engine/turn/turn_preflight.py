@@ -6,11 +6,30 @@ Menegakkan Invarian Suci 1 & 9:
 - Cek batas perulangan turn & kuota token.
 """
 
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Optional, Set, Tuple
 import aiosqlite
 
 from app.core.logger import logger
 from app.db.repos.ticket_repo import get_ticket
+
+_interrupted_tickets: Set[str] = set()
+
+
+def set_ticket_interrupted(ticket_id: str) -> None:
+    """Mendaftarkan tiket ke daftar interupsi aktif."""
+    _interrupted_tickets.add(ticket_id)
+    logger.info(f"[PreflightRegistry] Tiket [{ticket_id}] didaftarkan ke interupsi aktif.")
+
+
+def clear_ticket_interrupted(ticket_id: str) -> None:
+    """Menghapus tiket dari daftar interupsi aktif."""
+    _interrupted_tickets.discard(ticket_id)
+    logger.info(f"[PreflightRegistry] Tiket [{ticket_id}] dibersihkan dari interupsi aktif.")
+
+
+def is_ticket_interrupted(ticket_id: str) -> bool:
+    """Memeriksa apakah tiket sedang ditandai interupsi aktif."""
+    return ticket_id in _interrupted_tickets
 
 
 class PreflightResult:
@@ -38,7 +57,7 @@ async def execute_turn_preflight(
 ) -> PreflightResult:
     """Menjalankan pengecekan pre-flight deterministik sebelum memanggil API model."""
     # 1. Cek bendera interupsi memori
-    if interrupt_flag:
+    if interrupt_flag or is_ticket_interrupted(ticket_id):
         logger.info(f"[Preflight] Tiket [{ticket_id}] diinterupsi oleh Founder! Menghentikan eksekusi (0 Token).")
         return PreflightResult(
             can_proceed=False,
