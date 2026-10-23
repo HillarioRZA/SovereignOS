@@ -56,12 +56,12 @@ def test_validate_standard_handoff_missing_required_fields():
 
 
 def test_validate_qa_feedback_pass_and_fail_modes():
-    # QA PASS
+    # QA PASS dengan verdict lowercase 'pass' (harus dinormalisasi menjadi 'PASS')
     pass_payload = {
         "task_id": "task_101",
         "developer_role": "@frontend_developer",
         "qa_role": "@qa_engineer",
-        "verdict": "PASS",
+        "verdict": "pass",  # huruf kecil
         "attempt": 1,
         "evidence": ["test_run.log", "screenshot_desktop.png"],
         "notes": "Verified responsive layout and clean accessibility tree.",
@@ -69,13 +69,14 @@ def test_validate_qa_feedback_pass_and_fail_modes():
     result_pass = handoff_validator.validate_qa_feedback(pass_payload)
     assert result_pass.is_valid is True
     assert result_pass.handoff_type == "QA_FEEDBACK"
+    assert result_pass.sanitized_payload["verdict"] == "PASS"
 
-    # QA FAIL tanpa rincian issues (wajib ada issues jika verdict == FAIL)
+    # QA FAIL dengan verdict lowercase 'fail' tapi tanpa rincian issues (wajib ada issues jika verdict == FAIL)
     fail_payload_without_issues = {
         "task_id": "task_101",
         "developer_role": "@frontend_developer",
         "qa_role": "@qa_engineer",
-        "verdict": "FAIL",
+        "verdict": "fail",
         "attempt": 2,
         "issues": [],  # Harus diisi jika gagal
     }
@@ -83,8 +84,24 @@ def test_validate_qa_feedback_pass_and_fail_modes():
     assert result_fail.is_valid is False
     assert any("issue" in err.lower() for err in result_fail.errors)
 
+    # QA FAIL lengkap dengan issues dan evidence
+    fail_valid_payload = {
+        "task_id": "task_101",
+        "developer_role": "@frontend_developer",
+        "qa_role": "@qa_engineer",
+        "verdict": "FAIL",
+        "attempt": 2,
+        "issues": ["Button alignment broken on mobile 375px", "Missing alt text on logo"],
+        "evidence": ["error_mobile.png"],
+    }
+    result_fail_valid = handoff_validator.validate_qa_feedback(fail_valid_payload)
+    assert result_fail_valid.is_valid is True
+    assert result_fail_valid.sanitized_payload["verdict"] == "FAIL"
+    assert len(result_fail_valid.sanitized_payload["issues"]) == 2
+
 
 def test_format_handoff_markdown():
+    # 1. Standard Handoff Markdown
     payload = {
         "from_role": "@architect",
         "to_role": "@fe",
@@ -100,3 +117,21 @@ def test_format_handoff_markdown():
     assert "@architect" in md_output
     assert "ticket_77" in md_output
     assert "CRITICAL" in md_output
+
+    # 2. QA Feedback Markdown (memastikan Issues Found dan Evidence tampil untuk self-repair)
+    qa_payload = {
+        "task_id": "task_101",
+        "developer_role": "@fe",
+        "qa_role": "@qa",
+        "verdict": "FAIL",
+        "attempt": 1,
+        "issues": ["Crash on null user profile", "Slow query > 2s"],
+        "evidence": ["traceback.log", "query_plan.json"],
+        "notes": "Please fix before re-testing.",
+    }
+    qa_md = handoff_validator.format_handoff_markdown("QA_FEEDBACK", qa_payload)
+    assert "# NEXUS QA Verdict: FAIL ❌" in qa_md
+    assert "**Issues Found**:" in qa_md
+    assert "Crash on null user profile" in qa_md
+    assert "**Evidence**:" in qa_md
+    assert "traceback.log" in qa_md

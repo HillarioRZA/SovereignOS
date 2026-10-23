@@ -54,12 +54,20 @@ class QAFeedbackSchema(BaseModel):
     notes: Optional[str] = None
     timestamp: Optional[str] = None
 
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_verdict(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            if "verdict" in data and isinstance(data["verdict"], str):
+                data["verdict"] = data["verdict"].upper()
+            if not data.get("timestamp"):
+                data["timestamp"] = _now_iso()
+        return data
+
     @model_validator(mode="after")
     def check_issues_on_fail(self) -> "QAFeedbackSchema":
         if self.verdict == "FAIL" and not self.issues:
             raise ValueError("QA Feedback dengan verdict FAIL wajib menyertakan minimal 1 issue rincian kegagalan.")
-        if not self.timestamp:
-            self.timestamp = _now_iso()
         return self
 
 
@@ -159,8 +167,10 @@ class HandoffValidator:
             )
 
         elif upper_type in ("QA", "QA_FEEDBACK", "QA_VERDICT"):
-            verdict = payload.get("verdict", "PASS")
+            verdict = str(payload.get("verdict", "PASS")).upper()
             icon = "✅" if verdict == "PASS" else "❌"
+            issues_str = "\n".join([f"- {i}" for i in payload.get("issues", [])]) or "- (None)"
+            evidence_str = "\n".join([f"- {e}" for e in payload.get("evidence", [])]) or "- (None)"
             return (
                 f"# NEXUS QA Verdict: {verdict} {icon}\n\n"
                 f"## Task\n"
@@ -172,6 +182,8 @@ class HandoffValidator:
                 f"| **Attempt** | {payload.get('attempt', 1)} of 3 |\n"
                 f"| **Timestamp** | {ts} |\n\n"
                 f"## Verdict: {verdict}\n"
+                f"**Issues Found**:\n{issues_str}\n\n"
+                f"**Evidence**:\n{evidence_str}\n\n"
                 f"**Notes**: {payload.get('notes', 'None')}\n"
             )
 

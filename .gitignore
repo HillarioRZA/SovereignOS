@@ -12,10 +12,9 @@
 .codegraph/
 .mcp.json
 
-# Root Documentation (Except README.md and Roadmap.md)
+# Root Documentation (Except README.md)
 /*.md
 !/README.md
-!/Roadmap.md
 
 # Python Artifacts & Caches
 __pycache__/
